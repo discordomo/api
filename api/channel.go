@@ -9,7 +9,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/discordomo/api/router/middleware"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 // Channel is the struct for channels
@@ -22,12 +21,10 @@ type Channel struct {
 func CreateChannel(c *gin.Context) {
 	channel := new(Channel)
 	err := c.Bind(channel)
-	// Error message did not return in Insomnia
 	if err != nil {
 		retErr := fmt.Errorf("Unable to parse json body: %w", err)
-
-		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, retErr)
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
 
 		return
 	}
@@ -35,7 +32,13 @@ func CreateChannel(c *gin.Context) {
 	dg := middleware.RetrieveSession(c)
 
 	cType := parseChannelType(channel.Type)
-	guildID := os.Getenv("GUILD_ID")
+	guildID, exists := os.LookupEnv("GUILD_ID")
+	if !exists {
+		retErr := fmt.Errorf("Guild ID not set")
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, retErr.Error())
+		return
+	}
 
 	_, err = dg.GuildChannelCreate(guildID, channel.Name, cType)
 	if err != nil {
@@ -43,7 +46,7 @@ func CreateChannel(c *gin.Context) {
 	}
 
 	resp := fmt.Sprintf("created %s channel %s", channel.Type, channel.Name)
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusCreated, resp)
 
 	dg.Close()
 }
@@ -55,23 +58,36 @@ func DeleteChannel(c *gin.Context) {
 
 	dg := middleware.RetrieveSession(c)
 
-	guildID := os.Getenv("GUILD_ID")
+	guildID, exists := os.LookupEnv("GUILD_ID")
+	if !exists {
+		retErr := fmt.Errorf("Guild ID not set")
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, retErr.Error())
+		return
+	}
 
 	channels, err := dg.GuildChannels(guildID)
 	if err != nil {
+		retErr := fmt.Errorf("Unable to return channel list: %w", err)
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
+
 		return
 	}
 
 	todelete := ""
-	for _, sample := range channels {
-		if strings.EqualFold(sample.Name, channel) {
-			todelete = sample.ID
+	for _, channelsElement := range channels {
+		if strings.EqualFold(channelsElement.Name, channel) {
+			todelete = channelsElement.ID
 		}
 	}
 
 	_, err = dg.ChannelDelete(todelete)
 	if err != nil {
-		logrus.Error("Error deleting channel: %w", err)
+		retErr := fmt.Errorf("Error deleting channel: %w", err)
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
+
 	}
 
 	resp := fmt.Sprintf("deleted channel %s", channel)

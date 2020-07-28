@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/bwmarrin/discordgo"
@@ -28,13 +29,16 @@ func EstablishSession() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, exists := os.LookupEnv("BOT_TOKEN")
 		if !exists {
-			fmt.Println("Bot token not set")
+			retErr := fmt.Errorf("Bot token not found")
+			c.Error(retErr)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, retErr.Error())
 			return
 		}
 
 		dg, err := discordgo.New("Bot " + token)
 		if err != nil {
-			fmt.Println("error creating Discord session,", err)
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
 			return
 		}
 
