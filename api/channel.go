@@ -42,6 +42,9 @@ func CreateChannel(c *gin.Context) {
 
 	_, err = dg.GuildChannelCreate(guildID, channel.Name, cType)
 	if err != nil {
+		retErr := fmt.Errorf("Error creating channel: %w", err)
+		c.Error(retErr)
+		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
 		return
 	}
 
@@ -87,6 +90,7 @@ func DeleteChannel(c *gin.Context) {
 		retErr := fmt.Errorf("Error deleting channel: %w", err)
 		c.Error(retErr)
 		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
+		return
 
 	}
 
