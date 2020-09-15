@@ -19,6 +19,7 @@ func Load(options ...gin.HandlerFunc) *gin.Engine {
 	baseAPI := r.Group(base)
 	{
 		ChannelHandlers(baseAPI)
+		RoleHandlers(baseAPI)
 	}
 
 	return r
