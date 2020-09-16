@@ -18,7 +18,6 @@ func CreateChannel(c *gin.Context) {
 		retErr := fmt.Errorf("Unable to parse json body: %w", err)
 		c.Error(retErr)
 		c.AbortWithStatusJSON(http.StatusBadRequest, retErr.Error())
-
 		return
 	}
 
